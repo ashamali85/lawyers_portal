@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LAWYER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ProfileType {
+  INDIVIDUAL
+  FIRM
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AdStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// A login account. Public visitors have no account.
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime      @default(now())
+  lawyerProfile LawyerProfile?
+  auditLogs    AuditLog[]
+}
+
+// The vetting record + public identity for a lawyer or firm.
+model LawyerProfile {
+  id            String            @id @default(cuid())
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  profileType   ProfileType       @default(INDIVIDUAL)
+  fullName      String            // lawyer name or firm name
+  gender        Gender?           // optional for firms
+  phone         String
+  email         String
+  city          String            // governorate, e.g. Hawalli
+  bio           String            @db.Text
+  practiceAreas String[]          // e.g. ["Family", "Corporate"]
+  yearsExperience Int?
+  languages     String[]
+
+  // Private vetting document — admin access only.
+  resumeBlobUrl String?
+  resumeName    String?
+
+  status        ApplicationStatus @default(PENDING)
+  reviewNote    String?           @db.Text  // admin's note on approve/reject
+  reviewedAt    DateTime?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  ads           ServiceAd[]
+
+  @@index([status])
+}
+
+// A public advertisement a lawyer posts once approved.
+model ServiceAd {
+  id          String        @id @default(cuid())
+  lawyerId    String
+  lawyer      LawyerProfile @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+
+  title       String
+  summary     String        @db.Text
+  practiceArea String
+  feeNote     String?       // free text, e.g. "Free first consultation"
+  status      AdStatus      @default(PUBLISHED)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status])
+  @@index([practiceArea])
+}
+
+// Append-only trail of sensitive actions.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String   // e.g. "PROFILE_APPROVED"
+  target    String   // affected record id
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
