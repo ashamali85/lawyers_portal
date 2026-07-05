@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/db";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -32,7 +33,7 @@ export default async function HomePage() {
         <div className="container hero-grid">
           <div>
             <span className="eyebrow">Kuwait · Verified legal directory</span>
-            <h1>Find the right lawyer, with confidence.</h1>
+            <h1>Find the right lawyer, <span className="accent">with confidence.</span></h1>
             <p className="lede">
               Every lawyer and firm on Adala is reviewed and approved before
               their listing goes live. Browse freely — no account needed to find
@@ -63,11 +64,17 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Signature element: the verification seal */}
-          <div className="seal">
-            <div className="seal-core">
-              <div className="ar">موثّق</div>
-              <div className="en">Verified · Adala</div>
+          {/* Signature element: the Adala logo */}
+          <div className="hero-visual">
+            <div className="logo-frame">
+              <Image
+                src="/logo.webp"
+                alt="Adala — scales of justice emblem"
+                width={640}
+                height={640}
+                priority
+                className="hero-logo"
+              />
             </div>
           </div>
         </div>

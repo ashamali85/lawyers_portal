@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth";
 
@@ -9,7 +10,13 @@ export default async function SiteHeader() {
     <header className="site-header">
       <div className="container">
         <Link href="/" className="brand">
-          <span className="brand-mark">ع</span>
+          <Image
+            src="/logo-mark.webp"
+            alt="Adala"
+            width={38}
+            height={38}
+            className="brand-mark-img"
+          />
           <span className="brand-name">
             Adala<span>.</span>
           </span>

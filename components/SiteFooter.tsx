@@ -3,7 +3,7 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="container">
         <div>
-          <strong style={{ color: "var(--ink)" }}>Adala</strong> — Kuwait&apos;s
+          <strong>Adala</strong> — Kuwait&apos;s
           verified legal directory.
         </div>
         <div>
