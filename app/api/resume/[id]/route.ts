@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { get } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
-// Resumes are admin-only. Even though the blob URL is unguessable, we never
-// hand it to the client — this route checks the session role, then streams
-// the file, so access can't leak through the page source.
+// Resumes live in a PRIVATE blob store — the URL is not publicly reachable.
+// This route checks the admin session, then fetches the file through the
+// authenticated SDK get() and streams it back.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -17,21 +18,22 @@ export async function GET(
   const { id } = await params;
   const profile = await prisma.lawyerProfile.findUnique({
     where: { id },
-    select: { resumeBlobUrl: true, resumeName: true },
+    select: { resumePathname: true, resumeName: true },
   });
 
-  if (!profile?.resumeBlobUrl) {
+  if (!profile?.resumePathname) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const upstream = await fetch(profile.resumeBlobUrl);
-  if (!upstream.ok || !upstream.body) {
+  const result = await get(profile.resumePathname, { access: "private" });
+  if (result?.statusCode !== 200) {
     return new NextResponse("Unavailable", { status: 502 });
   }
 
-  return new NextResponse(upstream.body, {
+  return new NextResponse(result.stream, {
     headers: {
       "Content-Type": "application/pdf",
+      "X-Content-Type-Options": "nosniff",
       "Content-Disposition": `inline; filename="${profile.resumeName ?? "resume.pdf"}"`,
       "Cache-Control": "private, no-store",
     },

@@ -64,8 +64,9 @@ model LawyerProfile {
   languages     String[]
 
   // Private vetting document — admin access only.
-  resumeBlobUrl String?
-  resumeName    String?
+  resumeBlobUrl  String?  // private blob URL (not publicly reachable)
+  resumePathname String?  // pathname used by the SDK get() for private access
+  resumeName     String?
 
   status        ApplicationStatus @default(PENDING)
   reviewNote    String?           @db.Text  // admin's note on approve/reject

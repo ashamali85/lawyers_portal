@@ -71,12 +71,14 @@ export async function registerLawyer(
   }
 
   let resumeBlobUrl: string;
+  let resumePathname: string;
   try {
     const blob = await put(`resumes/${Date.now()}-${resume.name}`, resume, {
-      access: "public", // URL is unguessable; app gates access via the resume route
+      access: "private", // sensitive vetting doc; only reachable via authenticated get()
       addRandomSuffix: true,
     });
     resumeBlobUrl = blob.url;
+    resumePathname = blob.pathname;
   } catch {
     return { error: "Could not upload the resume. Please try again." };
   }
@@ -101,6 +103,7 @@ export async function registerLawyer(
           practiceAreas: data.practiceAreas,
           languages: data.languages,
           resumeBlobUrl,
+          resumePathname,
           resumeName: resume.name,
           status: "PENDING",
         },
