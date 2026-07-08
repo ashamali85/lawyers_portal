@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import {
@@ -11,13 +12,20 @@ import {
   destroySession,
 } from "@/lib/auth";
 import { logAction } from "@/lib/audit";
+import { rateLimit, rateLimitReset } from "@/lib/rate-limit";
+import { safeBlobFilename } from "@/lib/sanitize";
 import { PRACTICE_AREAS, KUWAIT_GOVERNORATES, LANGUAGES } from "@/lib/constants";
 
 type FormState = { error?: string; ok?: boolean };
 
 const registerSchema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  // bcrypt silently ignores bytes past 72, so cap here to avoid a password
+  // whose tail is meaningless. 64 chars is a comfortable, unambiguous ceiling.
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(64, "Password must be at most 64 characters"),
   profileType: z.enum(["INDIVIDUAL", "FIRM"]),
   fullName: z.string().min(2, "Name is required"),
   gender: z.enum(["MALE", "FEMALE"]).optional(),
@@ -73,10 +81,14 @@ export async function registerLawyer(
   let resumeBlobUrl: string;
   let resumePathname: string;
   try {
-    const blob = await put(`resumes/${Date.now()}-${resume.name}`, resume, {
-      access: "private", // sensitive vetting doc; only reachable via authenticated get()
-      addRandomSuffix: true,
-    });
+    const blob = await put(
+      `resumes/${Date.now()}-${safeBlobFilename(resume.name)}`,
+      resume,
+      {
+        access: "private", // sensitive vetting doc; only reachable via authenticated get()
+        addRandomSuffix: true,
+      }
+    );
     resumeBlobUrl = blob.url;
     resumePathname = blob.pathname;
   } catch {
@@ -104,7 +116,7 @@ export async function registerLawyer(
           languages: data.languages,
           resumeBlobUrl,
           resumePathname,
-          resumeName: resume.name,
+          resumeName: safeBlobFilename(resume.name),
           status: "PENDING",
         },
       },
@@ -121,6 +133,18 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Best-effort client IP from proxy headers. Vercel sets x-forwarded-for.
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  const fwd = h.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0]!.trim();
+  return h.get("x-real-ip") ?? "unknown";
+}
+
+// Throttle: 5 attempts per 10 minutes per (ip + email).
+const LOGIN_LIMIT = 5;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+
 export async function login(
   _prev: FormState,
   formData: FormData
@@ -131,11 +155,25 @@ export async function login(
   });
   if (!parsed.success) return { error: "Enter your email and password" };
 
+  const ip = await clientIp();
+  const rlKey = `login:${ip}:${parsed.data.email.toLowerCase()}`;
+  const rl = rateLimit(rlKey, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  if (!rl.allowed) {
+    const mins = Math.ceil(rl.retryAfterSeconds / 60);
+    return {
+      error: `Too many attempts. Try again in about ${mins} minute${
+        mins === 1 ? "" : "s"
+      }.`,
+    };
+  }
+
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
     return { error: "Incorrect email or password" };
   }
 
+  // Successful auth — clear the counter so earlier typos don't linger.
+  rateLimitReset(rlKey);
   await createSession(user.id);
   redirect(user.role === "ADMIN" ? "/admin" : "/dashboard");
 }

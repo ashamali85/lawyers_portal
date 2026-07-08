@@ -12,4 +12,6 @@ export const env = {
   jwtSecret: required("JWT_SECRET", 32),
   appUrl: process.env.APP_URL ?? "http://localhost:3000",
   databaseUrl: required("DATABASE_URL"),
+  // Required by Prisma for migrations (the non-pooled connection).
+  directUrl: required("DIRECT_URL"),
 };

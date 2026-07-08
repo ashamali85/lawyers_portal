@@ -236,7 +236,7 @@ a:hover { color: var(--brand); }
 .badge.firm { background: rgba(27,103,213,0.12); color: var(--brand); }
 
 .form { display: grid; gap: 18px; }
-.field { display: grid; gap: 7px; }
+.field { display: grid; gap: 7px; align-content: start; }
 .field label { font-size: 14px; font-weight: 700; color: var(--ink); }
 .field .hint { font-size: 12.5px; color: var(--muted); }
 .field input[type="text"],
@@ -253,8 +253,20 @@ a:hover { color: var(--brand); }
   background: #fff;
   font-family: "Inter", sans-serif;
   font-size: 15px;
+  line-height: 1.4;
   color: var(--ink);
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+/* Keep single-line controls a consistent height so fields sharing a row line
+   up even when one has a hint below it and the other doesn't. */
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="tel"],
+.field input[type="password"],
+.field input[type="number"],
+.field select {
+  height: 46px;
+  box-sizing: border-box;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
@@ -264,7 +276,7 @@ a:hover { color: var(--brand); }
 .field textarea { resize: vertical; min-height: 110px; }
 .field input[type="file"] { font-size: 14px; }
 
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 
 .check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; }
 .check {

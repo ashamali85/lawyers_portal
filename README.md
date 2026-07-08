@@ -55,9 +55,17 @@ credentials to reach `/admin`.
 1. Push to GitHub, import into Vercel.
 2. Add the env vars above (Production + Preview).
 3. Create a Vercel Blob store; its token populates `BLOB_READ_WRITE_TOKEN`.
-4. The build runs `prisma generate && prisma db push && next build`.
-5. After first deploy, run the seed once (locally against the prod DB, or via a
-   one-off script) to create the admin.
+4. The default build runs `prisma generate && prisma db push && next build`.
+   `db push` no longer uses `--accept-data-loss`, so it refuses destructive
+   changes instead of applying them silently.
+5. **Recommended for production:** switch to versioned migrations. Create an
+   initial migration locally with `npx prisma migrate dev --name init`, commit
+   the generated `prisma/migrations/` directory, and set the Vercel build
+   command to `npm run build:migrate` (which runs `prisma migrate deploy`).
+   This gives you a reviewable, reversible schema history.
+6. After first deploy, run the seed once (locally against the prod DB, or via a
+   one-off script) to create the admin. The seed refuses the example
+   placeholder credentials and passwords shorter than 12 characters.
 
 ## Privacy notes
 

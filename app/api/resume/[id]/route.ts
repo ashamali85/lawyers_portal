@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { get } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { safeHeaderFilename } from "@/lib/sanitize";
 
 // Resumes live in a PRIVATE blob store — the URL is not publicly reachable.
 // This route checks the admin session, then fetches the file through the
@@ -30,11 +31,13 @@ export async function GET(
     return new NextResponse("Unavailable", { status: 502 });
   }
 
+  const filename = safeHeaderFilename(profile.resumeName ?? "resume.pdf");
+
   return new NextResponse(result.stream, {
     headers: {
       "Content-Type": "application/pdf",
       "X-Content-Type-Options": "nosniff",
-      "Content-Disposition": `inline; filename="${profile.resumeName ?? "resume.pdf"}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "private, no-store",
     },
   });

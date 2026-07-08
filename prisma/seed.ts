@@ -13,6 +13,24 @@ async function main() {
     );
   }
 
+  // Guard against shipping the example placeholder or an obviously weak secret.
+  const PLACEHOLDERS = new Set([
+    "ChangeThisPassword123!",
+    "admin@example.com",
+    "change-me",
+  ]);
+  if (PLACEHOLDERS.has(password) || password.length < 12) {
+    throw new Error(
+      "SEED_ADMIN_PASSWORD is the example placeholder or too short. " +
+        "Set a unique password of at least 12 characters before seeding."
+    );
+  }
+  if (PLACEHOLDERS.has(email)) {
+    throw new Error(
+      "SEED_ADMIN_EMAIL is still the example placeholder. Set a real admin email."
+    );
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
   const admin = await prisma.user.upsert({

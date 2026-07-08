@@ -20,9 +20,16 @@ async function hasValidSession(req: NextRequest): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isProtected =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/resume");
 
   if (isProtected && !(await hasValidSession(req))) {
+    // API routes get a JSON 401; page routes redirect to login. (The route
+    // handler and page loaders still perform the authoritative role check.)
+    if (pathname.startsWith("/api/")) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
@@ -32,5 +39,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/api/resume/:path*"],
 };
